@@ -17,16 +17,19 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // 1. Parse Resume PDF
+        // 1. Parallelize: Parse Resume & Fetch GitHub Repos (if username provided)
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        const resumeText = await parsePdfResume(buffer);
 
-        // 2. Fetch GitHub Repos (if username provided)
+        const [resumeText, repos] = await Promise.all([
+            parsePdfResume(buffer),
+            githubUsername ? fetchUserRepos(githubUsername) : Promise.resolve([])
+        ]);
+
         let githubProjects = "";
-        if (githubUsername) {
-            const repos = await fetchUserRepos(githubUsername);
-            githubProjects = JSON.stringify(repos.slice(0, 10)); // Limit to top 10 relevant repos to save context
+        if (repos && repos.length > 0) {
+            // Limit to top 5 to reduce token usage and latency
+            githubProjects = JSON.stringify(repos.slice(0, 5));
         }
 
         // 3. Two-Step Optimization

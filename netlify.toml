@@ -4,3 +4,9 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[functions]
+  included_files = ["lib/**"]
+  node_bundler = "esbuild"
+  external_node_modules = ["pdf2json"]
+  duration = 60 # Attempt to set to 60s (requires Pro, but ensures max possible on Plan)

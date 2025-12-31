@@ -64,6 +64,41 @@ export default function Home() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-12 lg:py-20 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
 
+        {/* Loading Overlay */}
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center space-y-6">
+              <div className="relative w-20 h-20 mx-auto">
+                <div className="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+                <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-indigo-600 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Optimizing Resume</h3>
+                <p className="text-slate-500 text-sm mt-2">This may take up to a minute...</p>
+              </div>
+              <div className="space-y-2">
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-indigo-600 rounded-full"
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 45, ease: "linear" }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-slate-400">
+                  <span>Analyzing Profile</span>
+                  <span>Crafting Resume</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Left Column: Hero Content */}
         <div className="flex-1 space-y-8 text-center lg:text-left">
           <div className="space-y-4">
