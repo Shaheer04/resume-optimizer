@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 Resume Optimizer
 
-## Getting Started
+**Resume Optimizer** is an intelligent, full-stack web application designed to help developers tailor their resumes to specific job descriptions. Powered by **Google Gemini AI**, it analyzes your specific background and the job requirements to generate a hyper-focused, one-page resume that highlights your most relevant skills and experience.
 
-First, run the development server:
+## ✨ Key Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **📄 AI-Powered Optimization**: Uses Gemini AI to rewrite your Professional Summary and Experience points to align with JD keywords.
+- **🐙 GitHub Integration**: Automatically fetches your public GitHub repositories and selects the top 2-3 projects most relevant to the job.
+- **🎯 One-Page Focus**: Enforces a strict, concise format to ensure your resume is punchy and impactful (max 1 page).
+- **📊 Match Score Analysis**: Provides a 0-100 match score and a detailed breakdown of *why* changes were made.
+- **📥 PDF Export**: Generates a clean, ATS-friendly PDF of your tailored resume.
+- **🔒 Privacy Focused**: Resumes are processed in memory and results are stored locally in your browser (LocalStorage).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS & Shadcn UI
+- **AI Model**: Google Gemini 2.5 Flash
+- **PDF Processing**: `pdf2json` (Parsing) & `jspdf` (Generation)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Getting Started
 
-## Learn More
+### Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+- Node.js 18+ installed
+- A Google [Gemini API Key](https://aistudio.google.com/app/apikey)
+- (Optional) A GitHub Personal Access Token
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/Shaheer04/resume-optimizer.git
+    cd resume-optimizer
+    ```
 
-## Deploy on Vercel
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3.  **Configure Environment Variables**:
+    Create a `.env.local` file in the root directory:
+    ```env
+    # Required
+    GEMINI_API_KEY=your_gemini_api_key_here
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+    # Optional (Recommended for higher rate limits)
+    GITHUB_TOKEN=your_github_token_here
+    ```
+
+4.  **Run the Development Server**:
+    ```bash
+    npm run dev
+    ```
+
+5.  **Open the App**:
+    Visit `http://localhost:3000` in your browser.
+
+## 📝 Usage
+
+1.  **Upload Resume**: Upload your existing master resume (PDF format).
+2.  **Add Job Description**: Paste the job description you are applying for.
+3.  **Link GitHub**: Enter your GitHub username to pull in your best projects.
+4.  **Optimize**: Click "Generate Tailored Resume" and let the AI do the work.
+5.  **Review & Download**: Check your match score, review the specific edits, and download your new PDF.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
