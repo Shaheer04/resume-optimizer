@@ -6,7 +6,8 @@
   package = "@netlify/plugin-nextjs"
 
 [functions]
-  included_files = ["lib/**"]
-  node_bundler = "esbuild"
-  external_node_modules = ["pdf2json"]
-  duration = 60 # Attempt to set to 60s (requires Pro, but ensures max possible on Plan)
+  [functions."*"]
+    included_files = ["lib/**"]
+    node_bundler = "esbuild"
+    external_node_modules = ["pdf2json"]
+    # duration = 60 # Commenting out as free tier is hard-capped at 10s usually, strict config might fail deploy if invalid for plan.
