@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Upload, Github, Sparkles, FileText, CheckCircle2 } from "lucide-react";
+import { Upload, Github, Sparkles, FileText, CheckCircle2, Key } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Home() {
@@ -16,6 +16,7 @@ export default function Home() {
   const [formData, setFormData] = useState({
     jobDescription: "",
     githubUsername: "",
+    apiKey: "",
   });
   const [file, setFile] = useState<File | null>(null);
 
@@ -36,6 +37,9 @@ export default function Home() {
       data.append("resume", file);
       data.append("jobDescription", formData.jobDescription);
       data.append("githubUsername", formData.githubUsername);
+      if (formData.apiKey) {
+        data.append("apiKey", formData.apiKey);
+      }
 
       const res = await fetch("/api/optimize", {
         method: "POST",
@@ -199,6 +203,24 @@ export default function Home() {
                       className="pl-9 h-9 focus-visible:ring-indigo-500"
                       value={formData.githubUsername}
                       onChange={(e) => setFormData({ ...formData, githubUsername: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="apiKey" className="font-medium text-slate-700 flex justify-between">
+                    <span>Gemini API Key</span>
+                    <span className="text-xs text-slate-400 font-normal">Optional (Overrides default)</span>
+                  </Label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                    <Input
+                      id="apiKey"
+                      type="password"
+                      placeholder="AIzaSy..."
+                      className="pl-9 h-9 focus-visible:ring-indigo-500"
+                      value={formData.apiKey}
+                      onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
                     />
                   </div>
                 </div>

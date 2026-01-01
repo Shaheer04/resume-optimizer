@@ -1,7 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const getModel = (apiKey?: string) => {
+  const key = apiKey || process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("Gemini API Key is missing");
+  }
+  const genAI = new GoogleGenerativeAI(key);
+  return genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+};
 
 export interface ResumeContent {
   fullName?: string;
@@ -21,8 +27,9 @@ export interface ResumeContent {
     degree: string;
     school: string;
     date: string;
+    score?: string; // Added CGPA/Score
   }[];
-  skills?: string[];
+  skills?: string[]; // Made explicit that this is array of strings
   certifications?: string[];
   languages?: string[];
   awards?: string[];
@@ -39,77 +46,70 @@ export interface OptimizationResult {
   }[];
 }
 
-export async function extractResumeStructure(resumeText: string): Promise<ResumeContent> {
+export async function processResume(
+  resumeText: string,
+  jobDescription: string,
+  githubProjects: string,
+  apiKey?: string
+): Promise<{
+  optimizedContent: ResumeContent;
+  matchScore: number;
+  analysis: { section: string; change: string; reason: string }[];
+}> {
+  const model = getModel(apiKey);
   const prompt = `
-    You are a precise Data Extractor. Your task is to convert the following Resume Text into a structured JSON object.
+    You are an expert Resume Optimizer and Parser.
     
-    **Resume Text**:
-    ${resumeText}
+    **Task**: 
+    1. Parse the provided **Resume Text** into a structured JSON.
+    2. SIMULTANEOUSLY optimize the content based on the **Job Description** and **GitHub Projects**.
+    
+    **Inputs**:
+    - **Resume Text**: ${resumeText}
+    - **Job Description**: ${jobDescription}
+    - **GitHub Projects**: ${githubProjects}
 
-    **Instructions**:
-    - Extract ALL fields exactly as they appear. Do not summarize or rewrite.
-    - If a section (like Certifications, Languages, Awards) exists, include it.
-    - For lists (Skills, Certs, Languages), return array of strings.
-    - For Education, extract degree, school, and date.
+    **Optimization Rules**:
+    1. **Summary**: Rewrite to be extremely concise (Max 40 words), tailored to the JD.
+    2. **Experience**: 
+       - KEEP ALL ROLES. 
+       - Rewrite bullet points per role to match JD keywords. 
+       - **CRITICAL**: You MUST return the 'points' array for each role. Do not omit the description.
+    3. **Projects**: Integrate 2-3 relevant GitHub projects into the Projects section.
+    4. **Skills**: Extract all technical and soft skills. DO NOT SKIP THIS SECTION.
+    5. **Education**: Extract degree, school, date, AND **CGPA/Score** if present.
     
     **Output Format**:
-    Return only valid JSON:
+    Return a single valid JSON object with this structure:
     {
+      "optimizedContent": {
         "fullName": "...",
         "contactInfo": "...",
         "summary": "...",
-        "experience": [ { "title": "...", "company": "...", "date": "...", "points": ["..."] } ],
-        "education": [ { "degree": "...", "school": "...", "date": "..." } ],
-        "skills": [ ... ],
-        "certifications": [ ... ],
-        "languages": [ ... ],
-        "awards": [ ... ],
-        "projects": [ ... ]
-    }
-  `;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const jsonString = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    return JSON.parse(jsonString) as ResumeContent;
-  } catch (e) {
-    console.error("Extraction Error", e);
-    throw new Error("Failed to extract resume structure");
-  }
-}
-
-export async function optimizeResumeSections(
-  currentResume: ResumeContent,
-  jobDescription: string,
-  githubProjects: string
-): Promise<{
-  summary: string;
-  experience: any[];
-  projects: any[];
-  matchScore: number;
-  analysis: any[]
-}> {
-  const prompt = `
-    You are an expert Resume Optimizer.
-    
-    **Job Description**: ${jobDescription}
-    **Current Resume JSON**: ${JSON.stringify(currentResume)}
-    **GitHub Projects**: ${githubProjects}
-
-    **Task**:
-    1. **Summary**: Rewrite the professional summary to be **extremely concise** (Max 40 words). Focus only on the most relevant value proposition for this specific JD.
-    2. **Experience**: Rewrite the bullet points for the top 3 most relevant roles to match JD keywords. Keep it concise.
-    3. **Projects**: Select the top 2-3 GitHub projects relevant to the JD.
-
-    **Output**:
-    JSON ONLY:
-    {
-        "summary": "...",
-        "experience": [ ... ],
-        "projects": [ { "name": "Project Name", "description": "Description..." } ],
-        "matchScore": 85,
-        "analysis": [ { "section": "...", "change": "...", "reason": "..." } ]
+        "experience": [ 
+          { 
+            "title": "...", 
+            "company": "...", 
+            "date": "...", 
+            "points": ["Optimization point 1", "Optimization point 2"] // MUST include this
+          } 
+        ],
+        "education": [ 
+          { 
+            "degree": "...", 
+            "school": "...", 
+            "date": "...",
+            "score": "3.8/4.0" // Include if present
+          } 
+        ],
+        "skills": ["Skill 1", "Skill 2", ...], // MUST include this
+        "projects": [ ... ],
+        ... (other sections like certifications, languages)
+      },
+      "matchScore": 85, // 0-100 score based on JD match
+      "analysis": [ 
+        { "section": "Summary", "change": "Focused on React...", "reason": "JD requires React expert" } 
+      ]
     }
   `;
 
@@ -119,7 +119,7 @@ export async function optimizeResumeSections(
     const jsonString = text.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(jsonString);
   } catch (e) {
-    console.error("Optimization Error", e);
-    throw new Error("Failed to optimize sections");
+    console.error("Processing Error", e);
+    throw new Error("Failed to process resume");
   }
 }

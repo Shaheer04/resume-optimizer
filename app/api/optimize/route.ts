@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchUserRepos } from "@/lib/github";
-import { extractResumeStructure, optimizeResumeSections } from "@/lib/gemini";
+import { processResume } from "@/lib/gemini";
 import { parsePdfResume } from "@/lib/parser";
 
 export async function POST(req: NextRequest) {
@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
         const file = formData.get("resume") as File;
         const jobDescription = formData.get("jobDescription") as string;
         const githubUsername = formData.get("githubUsername") as string;
+        const apiKey = formData.get("apiKey") as string | undefined;
 
         if (!file || !jobDescription) {
             return NextResponse.json(
@@ -32,32 +33,17 @@ export async function POST(req: NextRequest) {
             githubProjects = JSON.stringify(repos.slice(0, 5));
         }
 
-        // 3. Two-Step Optimization
-        // Step A: Extract structure (Faithful Copy)
-        const currentResume = await extractResumeStructure(resumeText);
-
-        // Step B: Optimize specific sections
-        const optimizationResult = await optimizeResumeSections(
-            currentResume,
+        // 3. One-Shot Optimization (Performance Fix)
+        const result = await processResume(
+            resumeText,
             jobDescription,
-            githubProjects
+            githubProjects,
+            apiKey
         );
-
-        // 4. Merge Results
-        const finalResume = {
-            ...currentResume,
-            summary: optimizationResult.summary,
-            experience: optimizationResult.experience, // Replaced with optimized version
-            projects: optimizationResult.projects // Added/Replaced
-        };
 
         return NextResponse.json({
             success: true,
-            data: {
-                optimizedContent: finalResume,
-                matchScore: optimizationResult.matchScore,
-                analysis: optimizationResult.analysis
-            }
+            data: result // result already contains optimizedContent, matchScore, and analysis
         });
 
     } catch (error) {

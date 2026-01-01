@@ -40,40 +40,41 @@ export default function Dashboard() {
             format: "letter"
         });
 
-        // Fonts & Config
-        const MARGIN = 40;
+        // Fonts & Config (COMPACT MODE)
+        const MARGIN = 30; // Reduced from 40
         const PAGE_WIDTH = doc.internal.pageSize.getWidth();
         const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
-        let cursorY = 50;
-        const lineHeight = 14;
+        let cursorY = 40; // Start higher
+        const lineHeight = 12; // Reduced from 14
 
         // Helper: Add Section Header
         const addSectionHeader = (title: string) => {
-            if (cursorY + 30 > doc.internal.pageSize.getHeight()) {
+            if (cursorY + 25 > doc.internal.pageSize.getHeight()) {
                 doc.addPage();
-                cursorY = 50;
+                cursorY = 40;
             }
+            cursorY += 4;
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
+            doc.setFontSize(10); // Reduced from 11
             doc.setTextColor(50, 50, 150); // Indigo-ish
             doc.text(title.toUpperCase(), MARGIN, cursorY);
-            cursorY += 6;
+            cursorY += 5;
             doc.setDrawColor(200, 200, 200);
             doc.line(MARGIN, cursorY, MARGIN + CONTENT_WIDTH, cursorY);
-            cursorY += 15;
+            cursorY += 12; // Reduced spacing
             doc.setTextColor(0, 0, 0); // Reset
             doc.setFont("helvetica", "normal");
         };
 
         // Helper: Add Text wrapped
-        const addText = (text: string, fontSize = 10, isBold = false) => {
+        const addText = (text: string, fontSize = 9, isBold = false) => { // Default font reduced to 9
             doc.setFont("helvetica", isBold ? "bold" : "normal");
             doc.setFontSize(fontSize);
             const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
 
             if (cursorY + (lines.length * lineHeight) > doc.internal.pageSize.getHeight()) {
                 doc.addPage();
-                cursorY = 50;
+                cursorY = 40;
             }
 
             doc.text(lines, MARGIN, cursorY);
@@ -82,23 +83,23 @@ export default function Dashboard() {
 
         // Name & Contact
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(22);
+        doc.setFontSize(18); // Reduced from 22
         doc.text(optimizedContent.fullName || "Resume", PAGE_WIDTH / 2, cursorY, { align: "center" });
-        cursorY += 20;
+        cursorY += 16;
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
+        doc.setFontSize(9); // Reduced from 10
         doc.setTextColor(80, 80, 80);
         const contact = optimizedContent.contactInfo || "";
         doc.text(contact, PAGE_WIDTH / 2, cursorY, { align: "center" });
-        cursorY += 30;
+        cursorY += 20; // Reduced from 30
         doc.setTextColor(0, 0, 0);
 
         // Summary
         if (optimizedContent.summary) {
             addSectionHeader("Professional Summary");
             addText(optimizedContent.summary);
-            cursorY += 10;
+            cursorY += 8; // Reduced spacing
         }
 
         // Experience
@@ -106,46 +107,46 @@ export default function Dashboard() {
             addSectionHeader("Professional Experience");
             optimizedContent.experience.forEach((exp) => {
                 // Check page break for block start
-                if (cursorY + 40 > doc.internal.pageSize.getHeight()) {
+                if (cursorY + 35 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
-                    cursorY = 50;
+                    cursorY = 40;
                 }
 
                 // Title & Date
                 doc.setFont("helvetica", "bold");
-                doc.setFontSize(11);
+                doc.setFontSize(10); // Reduced from 11
                 doc.text(exp.title, MARGIN, cursorY);
 
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
                 doc.text(exp.date, PAGE_WIDTH - MARGIN, cursorY, { align: "right" });
-                cursorY += 14;
+                cursorY += 12;
 
                 // Company
                 doc.setFont("helvetica", "italic"); // Italic for company
-                doc.setFontSize(10);
+                doc.setFontSize(9); // Reduced from 10
                 doc.text(exp.company, MARGIN, cursorY);
-                cursorY += 14;
+                cursorY += 12;
 
                 // Points using circles for bullets
                 doc.setFont("helvetica", "normal");
-                doc.setFontSize(10);
+                doc.setFontSize(9); // Reduced from 10
                 if (exp.points) {
                     exp.points.forEach(pt => {
                         const bullet = "•";
                         const lines = doc.splitTextToSize(`${bullet}  ${pt}`, CONTENT_WIDTH - 10);
 
                         // Check page break for bullet
-                        if (cursorY + (lines.length * 12) > doc.internal.pageSize.getHeight()) {
+                        if (cursorY + (lines.length * 11) > doc.internal.pageSize.getHeight()) {
                             doc.addPage();
-                            cursorY = 50;
+                            cursorY = 40;
                         }
 
                         doc.text(lines, MARGIN + 5, cursorY);
-                        cursorY += (lines.length * 12);
+                        cursorY += (lines.length * 11); // Tighter line spacing
                     });
                 }
-                cursorY += 10; // Spacing between jobs
+                cursorY += 6; // Reduced spacing between jobs
             });
         }
 
@@ -153,29 +154,29 @@ export default function Dashboard() {
         if (optimizedContent.projects && optimizedContent.projects.length > 0) {
             addSectionHeader("Relevant Projects");
             optimizedContent.projects.forEach((proj) => {
-                if (cursorY + 30 > doc.internal.pageSize.getHeight()) {
+                if (cursorY + 25 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
-                    cursorY = 50;
+                    cursorY = 40;
                 }
 
                 doc.setFont("helvetica", "bold");
-                doc.setFontSize(10);
+                doc.setFontSize(9.5); // Slightly larger than body
                 doc.text(proj.name, MARGIN, cursorY);
-                cursorY += 12;
+                cursorY += 10;
 
-                addText(proj.description);
-                cursorY += 8;
+                addText(proj.description, 9);
+                cursorY += 6;
             });
-            cursorY += 10;
+            cursorY += 4;
         }
 
         // Education
         if (optimizedContent.education && optimizedContent.education.length > 0) {
             addSectionHeader("Education");
             optimizedContent.education.forEach((edu) => {
-                if (cursorY + 30 > doc.internal.pageSize.getHeight()) {
+                if (cursorY + 25 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
-                    cursorY = 50;
+                    cursorY = 40;
                 }
 
                 doc.setFont("helvetica", "bold");
@@ -185,21 +186,23 @@ export default function Dashboard() {
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
                 doc.text(edu.date, PAGE_WIDTH - MARGIN, cursorY, { align: "right" });
-                cursorY += 12;
+                cursorY += 11;
 
                 doc.setFont("helvetica", "italic");
-                doc.setFontSize(10);
-                doc.text(edu.degree, MARGIN, cursorY);
-                cursorY += 18;
+                doc.setFontSize(9);
+                // Combine degree and CGPA
+                const degreeLine = edu.score ? `${edu.degree} — CGPA: ${edu.score}` : edu.degree;
+                doc.text(degreeLine, MARGIN, cursorY);
+                cursorY += 14; // Reduced spacing
             });
-            cursorY += 5;
+            cursorY += 4;
         }
 
         // Skills
         if (optimizedContent.skills && optimizedContent.skills.length > 0) {
             addSectionHeader("Skills");
-            addText(optimizedContent.skills.join(" • "));
-            cursorY += 15;
+            addText(optimizedContent.skills.join(" • "), 9);
+            cursorY += 12;
         }
 
         // Certifications
@@ -207,28 +210,28 @@ export default function Dashboard() {
             addSectionHeader("Certifications");
             optimizedContent.certifications.forEach(cert => {
                 // Check page break
-                if (cursorY + 14 > doc.internal.pageSize.getHeight()) {
+                if (cursorY + 11 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
-                    cursorY = 50;
+                    cursorY = 40;
                 }
+                doc.setFontSize(9);
                 doc.text(`• ${cert}`, MARGIN + 5, cursorY);
-                cursorY += 14;
+                cursorY += 11;
             });
-            cursorY += 10;
+            cursorY += 8;
         }
-
-
 
         // Awards
         if (optimizedContent.awards && optimizedContent.awards.length > 0) {
             addSectionHeader("Honors & Awards");
             optimizedContent.awards.forEach(awr => {
-                if (cursorY + 14 > doc.internal.pageSize.getHeight()) {
+                if (cursorY + 11 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
-                    cursorY = 50;
+                    cursorY = 40;
                 }
+                doc.setFontSize(9);
                 doc.text(`• ${awr}`, MARGIN + 5, cursorY);
-                cursorY += 14;
+                cursorY += 11;
             });
         }
 
@@ -257,7 +260,7 @@ export default function Dashboard() {
                         <CardHeader>
                             <CardTitle>Match Score</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex flex-col items-center">
+                        <CardContent className="flex-1 flex flex-col items-center justify-center">
                             <div className="text-6xl font-black text-indigo-600">
                                 {matchScore}%
                             </div>
@@ -351,7 +354,10 @@ export default function Dashboard() {
                                                     <h3 className="font-bold text-sm">{edu.school}</h3>
                                                     <span className="text-xs text-slate-500">{edu.date}</span>
                                                 </div>
-                                                <p className="text-xs italic">{edu.degree}</p>
+                                                <div className="flex justify-between">
+                                                    <p className="text-xs italic">{edu.degree}</p>
+                                                    {edu.score && <span className="text-xs font-semibold text-slate-600">CGPA: {edu.score}</span>}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -378,8 +384,6 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-
-
                             {optimizedContent.awards && optimizedContent.awards.length > 0 && (
                                 <div className="mb-6">
                                     <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Honors & Awards</h2>
@@ -397,4 +401,4 @@ export default function Dashboard() {
             </div>
         </div>
     );
-}
+};
