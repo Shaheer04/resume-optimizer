@@ -1,13 +1,15 @@
-
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
-
-// Determine the worker source based on environment
-if (typeof window !== "undefined" && "Worker" in window) {
-    // Use a CDN for the worker in production/browser to avoid complex bundler setup issues
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-}
+// NO TOP-LEVEL IMPORT to avoid "DOMMatrix is not defined" during SSR
+// Function will dynamically import the library on the client side
 
 export async function parsePdfInBrowser(file: File): Promise<string> {
+    // Dynamic import to ensure this only runs in browser/client
+    const pdfjsLib = await import("pdfjs-dist");
+
+    // Configure worker
+    if (typeof window !== "undefined" && "Worker" in window) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
