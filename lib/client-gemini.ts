@@ -10,7 +10,7 @@ export async function optimizeResumeClient(
     resumeText: string,
     jobDescription: string,
     githubProjects: string
-): Promise<{ data: any; matchScore: number; analysis: any }> {
+): Promise<{ optimizedContent: any; matchScore: number; analysis: any }> {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
