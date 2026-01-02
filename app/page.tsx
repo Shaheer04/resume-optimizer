@@ -19,6 +19,7 @@ export default function Home() {
   const [formData, setFormData] = useState({
     jobDescription: "",
     githubUsername: "",
+    apiKey: "", // Initialize empty
   });
   const [file, setFile] = useState<File | null>(null);
 
@@ -30,7 +31,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !formData.jobDescription) return;
+    if (!file || !formData.jobDescription || !formData.apiKey) return;
 
     setLoading(true);
     setLoadingStatus("Parsing PDF...");
@@ -42,11 +43,10 @@ export default function Home() {
       // 2. Fetch GitHub (Client Side)
       setLoadingStatus("Fetching GitHub Projects...");
       let githubProjects = "";
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      const apiKey = formData.apiKey; // Use user-provided key
 
       if (!apiKey) {
-        console.error("Gemini API Key is missing. Check .env.local and NETLIFY env vars.");
-        throw new Error("Missing Gemini API Key. Ensure NEXT_PUBLIC_GEMINI_API_KEY is set.");
+        throw new Error("Please enter your Gemini API Key.");
       }
 
       if (formData.githubUsername) {
@@ -199,6 +199,22 @@ export default function Home() {
                     onChange={(e) => setFormData({ ...formData, jobDescription: e.target.value })}
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="apiKey" className="font-medium text-slate-700">Gemini API Key</Label>
+                  <Input
+                    id="apiKey"
+                    type="password"
+                    placeholder="Enter your Gemini API Key"
+                    value={formData.apiKey}
+                    onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+                    required
+                    className="focus-visible:ring-indigo-500"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Don't have one? <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">Get it here</a>
+                  </p>
                 </div>
 
                 <div className="space-y-2">
