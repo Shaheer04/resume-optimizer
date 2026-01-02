@@ -45,7 +45,8 @@ export default function Home() {
       const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
       if (!apiKey) {
-        throw new Error("Missing Gemini API Key. Please Add NEXT_PUBLIC_GEMINI_API_KEY to environment variables.");
+        console.error("Gemini API Key is missing. Check .env.local and NETLIFY env vars.");
+        throw new Error("Missing Gemini API Key. Ensure NEXT_PUBLIC_GEMINI_API_KEY is set.");
       }
 
       if (formData.githubUsername) {

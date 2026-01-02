@@ -7,7 +7,8 @@ export async function parsePdfInBrowser(file: File): Promise<string> {
 
     // Configure worker
     if (typeof window !== "undefined" && "Worker" in window) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        // Use unpkg which is often more reliable for specific versions
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
     }
 
     const arrayBuffer = await file.arrayBuffer();
