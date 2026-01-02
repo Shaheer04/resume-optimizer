@@ -7,16 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Upload, Github, Sparkles, FileText, CheckCircle2, Key } from "lucide-react";
+import { Upload, Github, Sparkles, FileText, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { parsePdfInBrowser, fetchGithubReposClient } from "@/lib/client-utils";
+import { optimizeResumeClient } from "@/lib/client-gemini";
 
 export default function Home() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState("Initializing...");
   const [formData, setFormData] = useState({
     jobDescription: "",
     githubUsername: "",
-    apiKey: "",
   });
   const [file, setFile] = useState<File | null>(null);
 
@@ -31,29 +33,41 @@ export default function Home() {
     if (!file || !formData.jobDescription) return;
 
     setLoading(true);
+    setLoadingStatus("Parsing PDF...");
 
     try {
-      const data = new FormData();
-      data.append("resume", file);
-      data.append("jobDescription", formData.jobDescription);
-      data.append("githubUsername", formData.githubUsername);
-      if (formData.apiKey) {
-        data.append("apiKey", formData.apiKey);
+      // 1. Parse PDF (Client Side)
+      const resumeText = await parsePdfInBrowser(file);
+
+      // 2. Fetch GitHub (Client Side)
+      setLoadingStatus("Fetching GitHub Projects...");
+      let githubProjects = "";
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+      if (!apiKey) {
+        throw new Error("Missing Gemini API Key. Please Add NEXT_PUBLIC_GEMINI_API_KEY to environment variables.");
       }
 
-      const res = await fetch("/api/optimize", {
-        method: "POST",
-        body: data,
-      });
+      if (formData.githubUsername) {
+        const token = process.env.NEXT_PUBLIC_GITHUB_TOKEN; // Optional
+        githubProjects = await fetchGithubReposClient(formData.githubUsername, token);
+      }
 
-      if (!res.ok) throw new Error("Optimization failed");
+      // 3. Optimize (Client Side)
+      setLoadingStatus("AI Optimization in Progress (This may take ~30s)...");
+      const result = await optimizeResumeClient(
+        apiKey,
+        resumeText,
+        formData.jobDescription,
+        githubProjects
+      );
 
-      const result = await res.json();
-      localStorage.setItem("optimizedResume", JSON.stringify(result.data));
+      localStorage.setItem("optimizedResume", JSON.stringify(result));
       router.push("/dashboard");
-    } catch (err) {
+
+    } catch (err: any) {
       console.error(err);
-      alert("Something went wrong. Please check your API keys and try again.");
+      alert(`Error: ${err.message || "Optimization failed"}`);
     } finally {
       setLoading(false);
     }
@@ -83,7 +97,7 @@ export default function Home() {
               </div>
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Optimizing Resume</h3>
-                <p className="text-slate-500 text-sm mt-2">This may take up to a minute...</p>
+                <p className="text-slate-500 text-sm mt-2">{loadingStatus}</p>
               </div>
               <div className="space-y-2">
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -93,10 +107,6 @@ export default function Home() {
                     animate={{ width: "100%" }}
                     transition={{ duration: 45, ease: "linear" }}
                   />
-                </div>
-                <div className="flex justify-between text-xs text-slate-400">
-                  <span>Analyzing Profile</span>
-                  <span>Crafting Resume</span>
                 </div>
               </div>
             </div>
@@ -203,24 +213,6 @@ export default function Home() {
                       className="pl-9 h-9 focus-visible:ring-indigo-500"
                       value={formData.githubUsername}
                       onChange={(e) => setFormData({ ...formData, githubUsername: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="apiKey" className="font-medium text-slate-700 flex justify-between">
-                    <span>Gemini API Key</span>
-                    <span className="text-xs text-slate-400 font-normal">Optional (Overrides default)</span>
-                  </Label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-                    <Input
-                      id="apiKey"
-                      type="password"
-                      placeholder="AIzaSy..."
-                      className="pl-9 h-9 focus-visible:ring-indigo-500"
-                      value={formData.apiKey}
-                      onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
                     />
                   </div>
                 </div>
