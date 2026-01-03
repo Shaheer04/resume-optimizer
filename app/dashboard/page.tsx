@@ -17,7 +17,9 @@ export default function Dashboard() {
         const stored = localStorage.getItem("optimizedResume");
         if (stored) {
             setTimeout(() => {
-                setData(JSON.parse(stored));
+                const parsed = JSON.parse(stored);
+                console.log("Loaded Resume Data:", parsed); // DEBUG LOG
+                setData(parsed);
             }, 0);
         }
     }, []);
@@ -33,6 +35,54 @@ export default function Dashboard() {
 
     const { optimizedContent, matchScore, analysis } = data;
 
+    // --- ROBUST DATA NORMALIZATION ---
+    // Ensure skills is always an array of strings
+    let safeSkills: string[] = [];
+    if (Array.isArray(optimizedContent.skills)) {
+        safeSkills = optimizedContent.skills.map((s: any) =>
+            typeof s === 'object' ? (s.name || s.label || JSON.stringify(s)) : String(s)
+        );
+    } else if (typeof optimizedContent.skills === 'string') {
+        safeSkills = (optimizedContent.skills as string).split(',').map(s => s.trim());
+    }
+
+    // --- HELPER TO SORT EXPERIENCE ---
+    const parseDate = (dateStr: string) => {
+        if (!dateStr) return new Date(0);
+        const lower = dateStr.toLowerCase();
+        if (lower.includes("present") || lower.includes("current") || lower.includes("now")) return new Date();
+
+        // Match years like 2023, 2024
+        const years = dateStr.match(/\d{4}/g);
+        if (years && years.length > 0) {
+            // Return the latest year found in the string (e.g. "2020 - 2022" -> 2022)
+            return new Date(parseInt(years[years.length - 1]), 11, 31);
+        }
+        return new Date(0);
+    };
+
+    const sortExperience = (exp: any[]) => {
+        if (!exp) return [];
+        return [...exp].sort((a, b) => {
+            const dateA = parseDate(a.date);
+            const dateB = parseDate(b.date);
+            return dateB.getTime() - dateA.getTime(); // Descending (Newest first)
+        });
+    };
+    // ---------------------------------
+
+    // Ensure compatible structure for rendering
+    const safeContent = {
+        ...optimizedContent,
+        skills: safeSkills,
+        experience: sortExperience(optimizedContent.experience || []), // Apply sorting here
+        education: optimizedContent.education?.map((edu: any) => ({
+            ...edu,
+            school: edu.school || edu.university || edu.institution || "University/School Name Missing"
+        })) || []
+    };
+    // ---------------------------------
+
     const handleDownloadPDF = () => {
         const doc = new jsPDF({
             orientation: "portrait",
@@ -40,41 +90,41 @@ export default function Dashboard() {
             format: "letter"
         });
 
-        // Fonts & Config (COMPACT MODE)
-        const MARGIN = 30; // Reduced from 40
+        // Fonts & Config (RELAXED MODE)
+        const MARGIN = 40; // Increased padding
         const PAGE_WIDTH = doc.internal.pageSize.getWidth();
         const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
-        let cursorY = 40; // Start higher
-        const lineHeight = 12; // Reduced from 14
+        let cursorY = 50; // Start lower
+        const lineHeight = 14; // Increased from 12
 
         // Helper: Add Section Header
         const addSectionHeader = (title: string) => {
-            if (cursorY + 25 > doc.internal.pageSize.getHeight()) {
+            if (cursorY + 30 > doc.internal.pageSize.getHeight()) {
                 doc.addPage();
-                cursorY = 40;
+                cursorY = 50;
             }
-            cursorY += 4;
+            cursorY += 6;
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(10); // Reduced from 11
+            doc.setFontSize(11); // Increased from 10
             doc.setTextColor(50, 50, 150); // Indigo-ish
             doc.text(title.toUpperCase(), MARGIN, cursorY);
-            cursorY += 5;
+            cursorY += 6;
             doc.setDrawColor(200, 200, 200);
             doc.line(MARGIN, cursorY, MARGIN + CONTENT_WIDTH, cursorY);
-            cursorY += 12; // Reduced spacing
+            cursorY += 16; // Increased spacing
             doc.setTextColor(0, 0, 0); // Reset
             doc.setFont("helvetica", "normal");
         };
 
         // Helper: Add Text wrapped
-        const addText = (text: string, fontSize = 9, isBold = false) => { // Default font reduced to 9
+        const addText = (text: string, fontSize = 10, isBold = false) => { // Default font increased to 10
             doc.setFont("helvetica", isBold ? "bold" : "normal");
             doc.setFontSize(fontSize);
             const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
 
             if (cursorY + (lines.length * lineHeight) > doc.internal.pageSize.getHeight()) {
                 doc.addPage();
-                cursorY = 40;
+                cursorY = 50;
             }
 
             doc.text(lines, MARGIN, cursorY);
@@ -83,29 +133,29 @@ export default function Dashboard() {
 
         // Name & Contact
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(18); // Reduced from 22
-        doc.text(optimizedContent.fullName || "Resume", PAGE_WIDTH / 2, cursorY, { align: "center" });
-        cursorY += 16;
+        doc.setFontSize(22); // Increased from 18
+        doc.text(safeContent.fullName || "Resume", PAGE_WIDTH / 2, cursorY, { align: "center" });
+        cursorY += 20;
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9); // Reduced from 10
+        doc.setFontSize(10); // Increased from 9
         doc.setTextColor(80, 80, 80);
-        const contact = optimizedContent.contactInfo || "";
+        const contact = safeContent.contactInfo || "";
         doc.text(contact, PAGE_WIDTH / 2, cursorY, { align: "center" });
-        cursorY += 20; // Reduced from 30
+        cursorY += 25; // Increased spacing
         doc.setTextColor(0, 0, 0);
 
         // Summary
-        if (optimizedContent.summary) {
+        if (safeContent.summary) {
             addSectionHeader("Professional Summary");
-            addText(optimizedContent.summary);
-            cursorY += 8; // Reduced spacing
+            addText(safeContent.summary);
+            cursorY += 12; // Increased spacing
         }
 
         // Experience
-        if (optimizedContent.experience && optimizedContent.experience.length > 0) {
+        if (safeContent.experience && safeContent.experience.length > 0) {
             addSectionHeader("Professional Experience");
-            optimizedContent.experience.forEach((exp) => {
+            safeContent.experience.forEach((exp) => {
                 // Check page break for block start
                 if (cursorY + 35 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
@@ -132,7 +182,7 @@ export default function Dashboard() {
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9); // Reduced from 10
                 if (exp.points) {
-                    exp.points.forEach(pt => {
+                    exp.points.forEach((pt: string) => {
                         const bullet = "•";
                         const lines = doc.splitTextToSize(`${bullet}  ${pt}`, CONTENT_WIDTH - 10);
 
@@ -151,9 +201,9 @@ export default function Dashboard() {
         }
 
         // Projects (MOVED ABOVE EDUCATION AS REQUESTED)
-        if (optimizedContent.projects && optimizedContent.projects.length > 0) {
+        if (safeContent.projects && safeContent.projects.length > 0) {
             addSectionHeader("Relevant Projects");
-            optimizedContent.projects.forEach((proj) => {
+            safeContent.projects.forEach((proj) => {
                 if (cursorY + 25 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
                     cursorY = 40;
@@ -171,9 +221,9 @@ export default function Dashboard() {
         }
 
         // Education
-        if (optimizedContent.education && optimizedContent.education.length > 0) {
+        if (safeContent.education && safeContent.education.length > 0) {
             addSectionHeader("Education");
-            optimizedContent.education.forEach((edu) => {
+            safeContent.education.forEach((edu: any) => {
                 if (cursorY + 25 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
                     cursorY = 40;
@@ -181,7 +231,8 @@ export default function Dashboard() {
 
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(10);
-                doc.text(edu.school, MARGIN, cursorY);
+                const schoolName = edu.school || "";
+                doc.text(schoolName, MARGIN, cursorY);
 
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
@@ -198,44 +249,49 @@ export default function Dashboard() {
             cursorY += 4;
         }
 
-        // Skills
-        if (optimizedContent.skills && optimizedContent.skills.length > 0) {
+        // Skills (Uses normalized strings in safeContent)
+        if (safeContent.skills && safeContent.skills.length > 0) {
             addSectionHeader("Skills");
-            addText(optimizedContent.skills.join(" • "), 9);
+            const skillsStr = safeContent.skills.join(" • ");
+            addText(skillsStr, 9);
             cursorY += 12;
         }
 
         // Certifications
-        if (optimizedContent.certifications && optimizedContent.certifications.length > 0) {
+        if (safeContent.certifications && safeContent.certifications.length > 0) {
             addSectionHeader("Certifications");
-            optimizedContent.certifications.forEach(cert => {
+            const certs = safeContent.certifications as any[];
+            certs.forEach(cert => {
                 // Check page break
                 if (cursorY + 11 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
                     cursorY = 40;
                 }
                 doc.setFontSize(9);
-                doc.text(`• ${cert}`, MARGIN + 5, cursorY);
+                const txt = typeof cert === 'object' ? cert.name : cert;
+                doc.text(`• ${txt}`, MARGIN + 5, cursorY);
                 cursorY += 11;
             });
             cursorY += 8;
         }
 
         // Awards
-        if (optimizedContent.awards && optimizedContent.awards.length > 0) {
+        if (safeContent.awards && safeContent.awards.length > 0) {
             addSectionHeader("Honors & Awards");
-            optimizedContent.awards.forEach(awr => {
+            const awards = safeContent.awards as any[];
+            awards.forEach(awr => {
                 if (cursorY + 11 > doc.internal.pageSize.getHeight()) {
                     doc.addPage();
                     cursorY = 40;
                 }
                 doc.setFontSize(9);
-                doc.text(`• ${awr}`, MARGIN + 5, cursorY);
+                const txt = typeof awr === 'object' ? awr.name : awr;
+                doc.text(`• ${txt}`, MARGIN + 5, cursorY);
                 cursorY += 11;
             });
         }
 
-        doc.save(`${optimizedContent.fullName || "resume"}_optimized.pdf`);
+        doc.save(`${safeContent.fullName || "resume"}_optimized.pdf`);
     };
 
     return (
@@ -300,19 +356,19 @@ export default function Dashboard() {
                         <CardContent className="flex-1 bg-white border border-slate-200 m-6 p-8 shadow-sm text-slate-800 rounded-sm font-serif min-h-[800px]">
                             {/* Visual Resume Rendering */}
                             <div className="text-center border-b pb-4 mb-4">
-                                <h1 className="text-3xl font-bold uppercase tracking-wide">{optimizedContent.fullName}</h1>
-                                <p className="text-sm text-slate-600 mt-1">{optimizedContent.contactInfo}</p>
+                                <h1 className="text-3xl font-bold uppercase tracking-wide">{safeContent.fullName}</h1>
+                                <p className="text-sm text-slate-600 mt-1">{safeContent.contactInfo}</p>
                             </div>
 
                             <div className="mb-6">
                                 <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Professional Summary</h2>
-                                <p className="text-sm leading-relaxed">{optimizedContent.summary}</p>
+                                <p className="text-sm leading-relaxed">{safeContent.summary}</p>
                             </div>
 
                             <div className="mb-6">
                                 <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Experience</h2>
                                 <div className="space-y-4">
-                                    {optimizedContent.experience && optimizedContent.experience.map((exp, i) => (
+                                    {safeContent.experience && safeContent.experience.map((exp, i) => (
                                         <div key={i}>
                                             <div className="flex justify-between items-baseline mb-1">
                                                 <h3 className="font-bold text-sm">{exp.title}</h3>
@@ -320,7 +376,7 @@ export default function Dashboard() {
                                             </div>
                                             <p className="text-xs font-semibold italic mb-1">{exp.company}</p>
                                             <ul className="list-disc list-outside ml-4 space-y-1">
-                                                {exp.points && exp.points.map((pt, j) => (
+                                                {exp.points && exp.points.map((pt: string, j: number) => (
                                                     <li key={j} className="text-sm">{pt}</li>
                                                 ))}
                                             </ul>
@@ -330,11 +386,11 @@ export default function Dashboard() {
                             </div>
 
                             {/* PROJECTS MOVED HERE (ABOVE EDUCATION) */}
-                            {optimizedContent.projects && (
+                            {safeContent.projects && (
                                 <div className="mb-6">
                                     <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Relevant Projects</h2>
                                     <div className="space-y-3">
-                                        {optimizedContent.projects.map((proj, k) => (
+                                        {safeContent.projects.map((proj, k) => (
                                             <div key={k}>
                                                 <h3 className="font-bold text-sm">{proj.name}</h3>
                                                 <p className="text-sm">{proj.description}</p>
@@ -344,11 +400,11 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            {optimizedContent.education && (
+                            {safeContent.education && safeContent.education.length > 0 && (
                                 <div className="mb-6">
                                     <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Education</h2>
                                     <div className="space-y-2">
-                                        {optimizedContent.education.map((edu, i) => (
+                                        {safeContent.education.map((edu: any, i: number) => (
                                             <div key={i}>
                                                 <div className="flex justify-between items-baseline">
                                                     <h3 className="font-bold text-sm">{edu.school}</h3>
@@ -364,32 +420,40 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            {optimizedContent.skills && optimizedContent.skills.length > 0 && (
-                                <div className="mb-6">
-                                    <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Skills</h2>
-                                    <div className="flex flex-wrap gap-2 text-sm leading-relaxed">
-                                        {optimizedContent.skills.join(" • ")}
-                                    </div>
+                            {/* ALWAYS RENDER SKILLS SECTION FOR DEBUGGING */}
+                            <div className="mb-6">
+                                <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Skills</h2>
+                                <div className="flex flex-wrap gap-2 text-sm leading-relaxed">
+                                    {(safeContent.skills && safeContent.skills.length > 0) ? (
+                                        safeContent.skills.map((skill, idx) => (
+                                            <span key={idx}>
+                                                {idx > 0 && " • "}
+                                                {skill}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-red-500 italic">No skills detected in resume data.</span>
+                                    )}
                                 </div>
-                            )}
+                            </div>
 
-                            {optimizedContent.certifications && optimizedContent.certifications.length > 0 && (
+                            {safeContent.certifications && safeContent.certifications.length > 0 && (
                                 <div className="mb-6">
                                     <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Certifications</h2>
                                     <ul className="list-disc list-outside ml-4 space-y-1">
-                                        {optimizedContent.certifications.map((cert, cx) => (
-                                            <li key={cx} className="text-sm">{cert}</li>
+                                        {safeContent.certifications.map((cert: any, cx) => (
+                                            <li key={cx} className="text-sm">{typeof cert === 'object' ? cert.name : cert}</li>
                                         ))}
                                     </ul>
                                 </div>
                             )}
 
-                            {optimizedContent.awards && optimizedContent.awards.length > 0 && (
+                            {safeContent.awards && safeContent.awards.length > 0 && (
                                 <div className="mb-6">
                                     <h2 className="text-sm font-bold uppercase text-indigo-800 border-b border-indigo-200 mb-2 pb-1">Honors & Awards</h2>
                                     <ul className="list-disc list-outside ml-4 space-y-1">
-                                        {optimizedContent.awards.map((awr, ax) => (
-                                            <li key={ax} className="text-sm">{awr}</li>
+                                        {safeContent.awards.map((awr: any, ax) => (
+                                            <li key={ax} className="text-sm">{typeof awr === 'object' ? awr.name : awr}</li>
                                         ))}
                                     </ul>
                                 </div>

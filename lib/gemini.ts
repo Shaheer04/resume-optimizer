@@ -44,6 +44,7 @@ export interface OptimizationResult {
     change: string;
     reason: string;
   }[];
+  originalText?: string; // Added for fallback extraction
 }
 
 export async function processResume(
@@ -51,11 +52,7 @@ export async function processResume(
   jobDescription: string,
   githubProjects: string,
   apiKey?: string
-): Promise<{
-  optimizedContent: ResumeContent;
-  matchScore: number;
-  analysis: { section: string; change: string; reason: string }[];
-}> {
+): Promise<OptimizationResult> { // Use interface return type
   const model = getModel(apiKey);
   const prompt = `
     You are an expert Resume Optimizer and Parser with a specialty in creating ATS-friendly, one-page resumes.
@@ -88,7 +85,7 @@ export async function processResume(
     **Optimization Rules**:
     1. **Summary**: Rewrite to be extremely concise (Max 40 words), tailored to the JD.
     2. **Experience**: 
-       - KEEP ALL ROLES in their ORIGINAL CHRONOLOGICAL ORDER (do not reorder).
+       - **STRICTLY PRESERVE ORDER**: Keep the exact chronological order as in the input resume. **DO NOT REORDER**.
        - Limit to 2-3 most impactful bullet points per role that match JD keywords.
        - **CRITICAL**: You MUST return the 'points' array for each role. Do not omit descriptions.
     3. **Projects**: 
@@ -96,14 +93,16 @@ export async function processResume(
        - Each description: 1-2 sentences maximum, highlighting tech stack and impact.
        - Prioritize projects that align with JD requirements.
     4. **Skills**: 
-       - Extract ALL technical and soft skills from resume.
-       - **NEVER SKIP THIS SECTION** - it's critical for ATS.
-       - Format as array for comma-separated display.
+       - **MANDATORY**: Extract ALL technical and soft skills.
+       - **IF NO SKILLS SECTION**: You MUST infer skills from the Experience and Projects sections.
+       - **CRITICAL**: Return as a simple **Array of Strings** (e.g., ["React", "TypeScript"]). 
+       - **DO NOT** use objects (e.g., [{"name": "React"}] is WRONG).
+       - **NEVER RETURN AN EMPTY ARRAY**.
     5. **Education**: 
-       - Extract degree, school, date, AND **CGPA/Score** if present.
-       - Keep concise (one entry per degree).
+       - Extract degree, **school** (use key 'school' for University Name), date, and score.
+       - One entry per degree.
     6. **Certifications/Awards**: 
-       - Include if present, but limit to 2-3 most relevant if space is tight.
+       - simple **Array of Strings**. **NO OBJECTS**.
     
     **Output Format**:
     Return a single valid JSON object with this structure:
@@ -149,9 +148,33 @@ export async function processResume(
     const result = await model.generateContent(prompt);
     const text = result.response.text();
     const jsonString = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    return JSON.parse(jsonString);
+    const parsedData = JSON.parse(jsonString);
+
+    // --- FALLBACK SKILLS EXTRACTION ---
+    // If AI returns empty skills, manually regex common tech terms from resumeText
+    if (!parsedData.optimizedContent.skills || parsedData.optimizedContent.skills.length === 0) {
+      console.warn("AI returned empty skills, performing fallback extraction.");
+      const commonSkills = [
+        "JavaScript", "TypeScript", "React", "Next.js", "Node.js", "Python", "Java", "C++", "C#",
+        "AWS", "Docker", "Kubernetes", "SQL", "NoSQL", "MongoDB", "PostgreSQL", "Git", "CI/CD",
+        "HTML", "CSS", "Tailwind", "Redux", "GraphQL", "REST API", "Linux", "Agile", "Scrum"
+      ];
+
+      const foundSkills = commonSkills.filter(skill =>
+        new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(resumeText)
+      );
+
+      parsedData.optimizedContent.skills = foundSkills.length > 0 ? foundSkills : ["Communication", "Problem Solving", "Teamwork"]; // Absolute last resort
+    }
+    // ----------------------------------
+
+    return {
+      ...parsedData,
+      originalText: resumeText // Pass raw text for fallback
+    };
   } catch (e) {
     console.error("Processing Error", e);
     throw new Error("Failed to process resume");
   }
 }
+
